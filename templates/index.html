@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistic Regression Visualization</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-image {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .error-message {
+            color: red;
+            display: none;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid red;
+            border-radius: 4px;
+            background-color: #fff3f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Logistic Regression Visualization</h1>
+        
+        <!-- Parameter Input Form -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Experiment Parameters</h5>
+                <form id="experimentForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="start" class="form-label">Start Distance</label>
+                        <input type="number" class="form-control" id="start" value="0.25" step="0.05" min="0.1" max="5.0" required>
+                        <div class="form-text">Range: 0.1 - 5.0</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="end" class="form-label">End Distance</label>
+                        <input type="number" class="form-control" id="end" value="2.0" step="0.05" min="0.2" max="10.0" required>
+                        <div class="form-text">Range: 0.2 - 10.0</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="stepNum" class="form-label">Number of Steps</label>
+                        <input type="number" class="form-control" id="stepNum" value="8" min="2" max="20" required>
+                        <div class="form-text">Range: 2 - 20</div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Run Experiment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Running experiment...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Results Section -->
+        <div id="results" class="row">
+            <div class="col-12">
+                <h2 class="mb-3">Results</h2>
+                <div class="mb-4">
+                    <h4>Dataset Visualization</h4>
+                    <img id="datasetImage" class="result-image" alt="Dataset visualization">
+                </div>
+                <div class="mb-4">
+                    <h4>Parameter Analysis</h4>
+                    <img id="parametersImage" class="result-image" alt="Parameter analysis">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('experimentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const start = parseFloat(document.getElementById('start').value);
+            const end = parseFloat(document.getElementById('end').value);
+            const stepNum = parseInt(document.getElementById('stepNum').value);
+
+            // Validate input
+            if (start >= end) {
+                showError('Start value must be less than end value');
+                return;
+            }
+
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            try {
+                const response = await fetch('/run_experiment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start: start,
+                        end: end,
+                        step_num: stepNum
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Update images with timestamp to prevent caching
+                    const timestamp = new Date().getTime();
+                    document.getElementById('datasetImage').src = `${result.dataset_img}?t=${timestamp}`;
+                    document.getElementById('parametersImage').src = `${result.parameters_img}?t=${timestamp}`;
+                    document.getElementById('results').style.display = 'block';
+                } else {
+                    showError(result.message);
+                }
+            } catch (error) {
+                showError('An error occurred while running the experiment');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Hide results initially
+        document.getElementById('results').style.display = 'none';
+    </script>
+</body>
+</html>
